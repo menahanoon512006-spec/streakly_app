@@ -3,7 +3,10 @@ import 'package:streakly_app/main.dart';
 
 void main() {
   testWidgets('Dawem Streakly smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const DawemStreaklyApp());
-    expect(find.byType(DawemStreaklyApp), findsOneWidget);
+    // بناء التطبيق باستخدام اسم الكلاس الصحيح MyApp
+    await tester.pumpWidget(const MyApp());
+    
+    // التحقق من وجود الـ MyApp في شجرة الـ widgets
+    expect(find.byType(MyApp), findsOneWidget);
   });
 }

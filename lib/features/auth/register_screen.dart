@@ -86,11 +86,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center, // توسيط المحتوى
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 12),
 
-                // Header - في المنتصف
+                // Header
                 Text(
                   "Create Account",
                   textAlign: TextAlign.center,
@@ -101,7 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Join Streakly and start learning",
+                  "Join Dawem and start learning",
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: isDark ? const Color(0xFF94A3B8) : AppColors.textSecondary,
@@ -208,9 +208,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Please create a password';
                     }
-                    // قيد: 6 حروف بالضبط (لا أقل ولا أكثر)
-                    if (value.length != 6) {
-                      return 'Password must be exactly 6 characters';
+                    if (value.length < 8) {
+                      return 'Password must be at least 8 characters long';
+                    }
+                    if (!value.contains(RegExp(r'[A-Za-z]')) || 
+                        !value.contains(RegExp(r'\d')) || 
+                        !value.contains(RegExp(r'[@$!%*?&]'))) {
+                      return 'Password must include letters, numbers, and special characters (@\$!%*?&)';
                     }
                     return null;
                   },

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/network/api_service.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Central Reactive State Provider managing authentication, gamification, goals, tasks, and streaks.
 class AppState extends ChangeNotifier {
@@ -204,6 +205,20 @@ class AppState extends ChangeNotifier {
     _setLoading(true);
     _goals = [];
     _activeGoal = null;
+
+    // استرجاع حالة تسجيل الدخول المخزنة محلياً عند بدء التطبيق
+    final prefs = await SharedPreferences.getInstance();
+    _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    if (_isLoggedIn) {
+      final storedEmail = prefs.getString('userEmail') ?? '';
+      final storedName = prefs.getString('userName') ?? (storedEmail.contains('@') ? storedEmail.split('@').first.capitalize() : 'User');
+      _user = UserModel(
+        userId: prefs.getString('userId') ?? 'u-${DateTime.now().millisecondsSinceEpoch}',
+        name: storedName,
+        email: storedEmail,
+      );
+    }
+
     _badges = await _apiService.getBadges();
     _setLoading(false);
   }
@@ -213,16 +228,34 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sign In with Email & Password
+  /// Sign In with Email & Password (مع التحقق من وجود الحساب مسجلاً مسبقاً)
   Future<bool> login(String email, String password) async {
     _setLoading(true);
     await Future.delayed(const Duration(milliseconds: 700)); 
+
+    final prefs = await SharedPreferences.getInstance();
+    final registeredEmail = prefs.getString('registeredEmail');
+
+    // إذا لم يكن الإيميل مسجلاً من قبل، نمنع الدخول ونظهر خطأ
+    if (registeredEmail == null || registeredEmail != email) {
+      _setLoading(false);
+      throw Exception('Account not found. Please sign up first!');
+    }
+
+    final userId = prefs.getString('userId') ?? 'u-${DateTime.now().millisecondsSinceEpoch}';
+    final userName = prefs.getString('userName') ?? email.split('@').first.capitalize();
+
     _user = UserModel(
-      userId: 'u-${DateTime.now().millisecondsSinceEpoch}',
-      name: email.split('@').first.capitalize(),
+      userId: userId,
+      name: userName,
       email: email,
     );
     _isLoggedIn = true;
+
+    // حفظ حالة الدخول الحالية
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userEmail', email);
+
     _setLoading(false);
     notifyListeners();
     return true;
@@ -232,19 +265,30 @@ class AppState extends ChangeNotifier {
   Future<bool> register(String name, String email, String password) async {
     _setLoading(true);
     await Future.delayed(const Duration(milliseconds: 800)); 
+    final userId = 'u-${DateTime.now().millisecondsSinceEpoch}';
+
     _user = UserModel(
-      userId: 'u-${DateTime.now().millisecondsSinceEpoch}',
+      userId: userId,
       name: name,
       email: email,
     );
     _isLoggedIn = true;
+
+    // حفظ البيانات وتسجيل الإيميل كحساب رسمي جديد
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('registeredEmail', email); // حفظ الإيميل المسجل للتحقق منه في Login
+    await prefs.setString('userEmail', email);
+    await prefs.setString('userName', name);
+    await prefs.setString('userId', userId);
+
     _setLoading(false);
     notifyListeners();
     return true;
   }
 
   /// Logout
-  void logout() {
+  Future<void> logout() async {
     _isLoggedIn = false;
     _user = UserModel(userId: '', name: '', email: '');
     _goals = [];
@@ -254,6 +298,11 @@ class AppState extends ChangeNotifier {
     for (var c in _challenges) {
       c.isJoined = false;
     }
+
+    // مسح البيانات المخزنة محلياً عند الخروج
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
     notifyListeners();
   }
 
